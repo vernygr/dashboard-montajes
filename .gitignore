@@ -1,0 +1,31 @@
+# Streamlit
+.streamlit/secrets.toml
+.streamlit/cache/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+env/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data
+*.xlsx
+*.xls
+*.csv
+!requirements.txt
