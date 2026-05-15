@@ -159,7 +159,6 @@ if df_main is None or df_main.empty:
 
 # Para la lógica posterior, usar df_main directamente
 df1 = df_main.copy()
-df2 = None
 mes_seleccionado = " / ".join(meses_seleccionados) if len(meses_seleccionados) > 1 else meses_seleccionados[0]
 
 if df1 is None or df1.empty:
