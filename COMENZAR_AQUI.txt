@@ -1,0 +1,92 @@
+================================================================================
+   DASHBOARD MONTAJES - STREAMLIT CLOUD
+   Tu aplicación está lista. Ahora a subirla a la nube.
+================================================================================
+
+UBICACION DEL PROYECTO:
+   C:\Users\vgutierrez\Desktop\dashboard-montajes-streamlit\
+
+ESTADO ACTUAL:
+   [OK] Aplicación Streamlit creada
+   [OK] Todos los archivos configurados
+   [OK] Git inicializado localmente
+   [OK] Archivo de ejemplo (MARZO_EJEMPLO.xlsx) generado
+   
+   Ahora: SUBIR A GITHUB + STREAMLIT CLOUD
+
+================================================================================
+                         FLUJO EN 4 PASOS
+================================================================================
+
+PASO 1: Crear Repositorio en GitHub (2 minutos)
+   https://github.com/new
+   - Name: dashboard-montajes
+   - Public: SI
+   - Crear
+
+PASO 2: Subir Código (3 minutos)
+   Abre PowerShell:
+   
+   cd C:\Users\vgutierrez\Desktop\dashboard-montajes-streamlit
+   
+   git config --global user.name "Tu Nombre"
+   git config --global user.email "tu@email.com"
+   
+   git remote add origin https://github.com/TU-USERNAME/dashboard-montajes.git
+   git push -u origin main
+
+PASO 3: Conectar Streamlit Cloud (5 minutos)
+   https://streamlit.io/cloud
+   - Sign up con GitHub
+   - New app
+   - Selecciona tu repositorio
+   - Deploy
+
+PASO 4: Usar (30 segundos cada jueves)
+   - Abre tu URL de Streamlit
+   - Carga tu Excel nuevo
+   - ¡Listo!
+
+================================================================================
+                         ARCHIVOS IMPORTANTES
+================================================================================
+
+COMIENZA POR LEER (EN ESTE ORDEN):
+
+1. INSTRUCCIONES_GITHUB_STREAMLIT.md  ← INSTRUCCIONES DETALLADAS (COMIENZA AQUÍ)
+2. DEPLOYMENT.md                       ← Guía de deploy con más detalles
+3. README.md                           ← Documentación completa
+
+PARA DESARROLLADORES:
+   - app.py                           ← Código principal
+   - requirements.txt                 ← Dependencias
+   - test_app.py                      ← Script para generar datos de prueba
+
+CONFIGURACION:
+   - .streamlit/config.toml           ← Configuración de temas
+   - .gitignore                       ← Archivos a ignorar en Git
+   - LICENSE                          ← Licencia MIT
+
+================================================================================
+                    ESTRUCTURA CONFIRMADA DEL EXCEL
+================================================================================
+
+Tu Excel debe tener una hoja llamada "DATA" con (a partir de fila 6):
+
+   MES, DÍA, MONTADOR, NOMBRE DEL MONTADOR / LÍDER, PRODUCTO, CLIENTE, INY,
+   MONTAJE (X), DESMONTAJE (X), ID, HORA DE INICIO, HORA DE FINALIZACIÓN,
+   TIEMPO TOTAL (HORAS), TIEMPO BRUTO (MIN), TIEMPOS PAROS/MUERTOS,
+   TIEMPO NETO, TIEMPO PROGRAMADO
+
+EJEMPLO DE ARCHIVO: MARZO_EJEMPLO.xlsx (ya lo tenemos)
+
+================================================================================
+                         SIGUIENTE PASO
+================================================================================
+
+Abre este archivo:
+   INSTRUCCIONES_GITHUB_STREAMLIT.md
+
+Y sigue paso a paso. En 15 minutos tu dashboard estará en vivo.
+
+================================================================================

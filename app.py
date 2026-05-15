@@ -7,12 +7,24 @@ from pathlib import Path
 st.set_page_config(page_title="Dashboard Montajes - Comparativo", layout="wide", page_icon="📊")
 
 # ============================================================
-# CONSTANTES DE BRANDING ELECTROPLAST
+# CONSTANTES DE BRANDING ELECTROPLAST (Colores del logo)
 # ============================================================
-COLOR_AZUL_PRINCIPAL = "#003DA5"
-COLOR_VERDE_SECUNDARIO = "#00A651"
+COLOR_AZUL_PRINCIPAL = "#008bc2"
+COLOR_VERDE_SECUNDARIO = "#53991f"
 COLOR_GRIS_CLARO = "#f5f5f5"
 LOGO_PATH = Path("electroplast_logo.png")
+
+# ============================================================
+# INICIALIZAR SESSION STATE
+# ============================================================
+if "df1_cached" not in st.session_state:
+    st.session_state.df1_cached = None
+if "df2_cached" not in st.session_state:
+    st.session_state.df2_cached = None
+if "mes1_nombre" not in st.session_state:
+    st.session_state.mes1_nombre = "Marzo"
+if "mes2_nombre" not in st.session_state:
+    st.session_state.mes2_nombre = "Abril"
 
 # ============================================================
 # CARGA DE DATOS
@@ -64,26 +76,57 @@ if LOGO_PATH.exists():
     st.sidebar.divider()
 
 st.sidebar.title("⚙️ Configuración")
+
+# Botones de acción
+col_btn1, col_btn2 = st.sidebar.columns(2)
+with col_btn1:
+    if st.button("🔄 Recargar", use_container_width=True):
+        st.rerun()
+
+with col_btn2:
+    if st.button("🗑️ Borrar", use_container_width=True):
+        st.session_state.df1_cached = None
+        st.session_state.df2_cached = None
+        st.session_state.archivo1 = None
+        st.session_state.archivo2 = None
+        st.success("Archivos borrados. Recargando...")
+        st.rerun()
+
+st.sidebar.divider()
 st.sidebar.markdown("### 📁 Carga de archivos")
 
 archivo1 = st.sidebar.file_uploader("Archivo MES 1", type=["xlsx"], key="file1")
-mes1_nombre = st.sidebar.text_input("Nombre mes 1", value="Marzo", key="mes1_name")
+mes1_nombre = st.sidebar.text_input("Nombre mes 1", value=st.session_state.mes1_nombre, key="mes1_name")
 
 archivo2 = st.sidebar.file_uploader("Archivo MES 2 (Opcional)", type=["xlsx"], key="file2")
-mes2_nombre = st.sidebar.text_input("Nombre mes 2", value="Abril", key="mes2_name")
+mes2_nombre = st.sidebar.text_input("Nombre mes 2", value=st.session_state.mes2_nombre, key="mes2_name")
 
-if archivo1 is None:
+# Guardar nombres en session state
+st.session_state.mes1_nombre = mes1_nombre
+st.session_state.mes2_nombre = mes2_nombre
+
+# Cargar datos con persistencia en session_state
+if archivo1 is not None:
+    df1 = cargar_datos(archivo1, mes1_nombre)
+    st.session_state.df1_cached = df1
+elif st.session_state.df1_cached is not None:
+    df1 = st.session_state.df1_cached
+else:
     ruta_local = Path("MARZO.xlsx")
     if ruta_local.exists():
-        archivo1 = ruta_local
-        mes1_nombre = "Marzo"
+        df1 = cargar_datos(ruta_local, "Marzo")
+        st.session_state.df1_cached = df1
     else:
         st.info("⬆️ Sube al menos un archivo Excel para comenzar.")
         st.stop()
 
-# Cargar datos
-df1 = cargar_datos(archivo1, mes1_nombre)
-df2 = cargar_datos(archivo2, mes2_nombre) if archivo2 else None
+if archivo2 is not None:
+    df2 = cargar_datos(archivo2, mes2_nombre)
+    st.session_state.df2_cached = df2
+elif st.session_state.df2_cached is not None:
+    df2 = st.session_state.df2_cached
+else:
+    df2 = None
 
 # Si hay dos archivos, combinar para obtener lista completa de montadores
 if df2 is not None:
