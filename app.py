@@ -21,8 +21,8 @@ if "df1_cached" not in st.session_state:
     st.session_state.df1_cached = None
 if "df2_cached" not in st.session_state:
     st.session_state.df2_cached = None
-if "mes1_nombre" not in st.session_state:
-    st.session_state.mes1_nombre = "Marzo"
+if "mes_seleccionado" not in st.session_state:
+    st.session_state.mes_seleccionado = "Marzo"
 if "mes2_nombre" not in st.session_state:
     st.session_state.mes2_nombre = "Abril"
 
@@ -85,55 +85,62 @@ with col_btn1:
 
 with col_btn2:
     if st.button("🗑️ Borrar", use_container_width=True):
-        st.session_state.df1_cached = None
-        st.session_state.df2_cached = None
-        st.session_state.archivo1 = None
-        st.session_state.archivo2 = None
-        st.success("Archivos borrados. Recargando...")
+        st.session_state.df_main_cached = None
+        st.success("Archivo borrado. Recargando...")
         st.rerun()
 
 st.sidebar.divider()
-st.sidebar.markdown("### 📁 Carga de archivos")
+st.sidebar.markdown("### 📁 Carga de archivo")
 
-archivo1 = st.sidebar.file_uploader("Archivo MES 1", type=["xlsx"], key="file1")
-mes1_nombre = st.sidebar.text_input("Nombre mes 1", value=st.session_state.mes1_nombre, key="mes1_name")
-
-archivo2 = st.sidebar.file_uploader("Archivo MES 2 (Opcional)", type=["xlsx"], key="file2")
-mes2_nombre = st.sidebar.text_input("Nombre mes 2", value=st.session_state.mes2_nombre, key="mes2_name")
-
-# Guardar nombres en session state
-st.session_state.mes1_nombre = mes1_nombre
-st.session_state.mes2_nombre = mes2_nombre
+archivo = st.sidebar.file_uploader("Carga archivo Excel con múltiples meses", type=["xlsx"], key="file_main")
 
 # Cargar datos con persistencia en session_state
-if archivo1 is not None:
-    df1 = cargar_datos(archivo1, mes1_nombre)
-    st.session_state.df1_cached = df1
+if archivo is not None:
+    df_main = cargar_datos(archivo, "")
+    st.session_state.df_main_cached = df_main
+elif st.session_state.df1_cached is not None and st.session_state.df2_cached is not None:
+    # Compatibilidad hacia atrás: si había dos archivos cargados, combinarlos
+    df_main = pd.concat([st.session_state.df1_cached, st.session_state.df2_cached], ignore_index=True)
+    st.session_state.df_main_cached = df_main
 elif st.session_state.df1_cached is not None:
-    df1 = st.session_state.df1_cached
+    df_main = st.session_state.df1_cached
+    st.session_state.df_main_cached = df_main
 else:
     ruta_local = Path("MARZO.xlsx")
     if ruta_local.exists():
-        df1 = cargar_datos(ruta_local, "Marzo")
-        st.session_state.df1_cached = df1
+        df_main = cargar_datos(ruta_local, "")
+        st.session_state.df_main_cached = df_main
     else:
-        st.info("⬆️ Sube al menos un archivo Excel para comenzar.")
+        st.info("⬆️ Sube un archivo Excel para comenzar.")
         st.stop()
 
-if archivo2 is not None:
-    df2 = cargar_datos(archivo2, mes2_nombre)
-    st.session_state.df2_cached = df2
-elif st.session_state.df2_cached is not None:
-    df2 = st.session_state.df2_cached
-else:
-    df2 = None
+# Extraer meses únicos
+meses_disponibles = sorted(df_main["MES"].dropna().unique())
+if not meses_disponibles:
+    st.warning("⚠️ El archivo no contiene datos con la columna 'MES' correctamente.")
+    st.stop()
 
-# Si hay dos archivos, combinar para obtener lista completa de montadores
-if df2 is not None:
-    df_combined = pd.concat([df1, df2], ignore_index=True)
-    todos_montadores = sorted(df_combined["MONTADOR"].unique())
-else:
-    todos_montadores = sorted(df1["MONTADOR"].unique())
+st.sidebar.markdown("### 📅 Selecciona mes")
+
+mes_seleccionado = st.sidebar.selectbox(
+    "Mes a analizar",
+    meses_disponibles,
+    index=0,
+    key="mes_select"
+)
+
+# Filtrar datos por mes seleccionado
+df1 = df_main[df_main["MES"] == mes_seleccionado].copy()
+df2 = None
+
+if df1 is None or df1.empty:
+    st.warning(f"⚠️ No hay datos para {mes_seleccionado}.")
+    st.stop()
+
+# Obtener lista de montadores de ambos meses (si aplica)
+todos_montadores = sorted(df1["MONTADOR"].unique())
+if df2 is not None and not df2.empty:
+    todos_montadores = sorted(set(todos_montadores) | set(df2["MONTADOR"].unique()))
 
 # ============================================================
 # FILTROS EN SIDEBAR
@@ -192,18 +199,14 @@ dff1 = aplicar_filtros(df1)
 dff2 = aplicar_filtros(df2) if df2 is not None else None
 
 if dff1.empty:
-    st.warning("No hay datos en MES 1 con los filtros seleccionados.")
+    st.warning(f"No hay datos para {mes_seleccionado} con los filtros seleccionados.")
     st.stop()
 
 # ============================================================
 # TÍTULO
 # ============================================================
-if df2 is not None:
-    st.title("📊 Comparativo de Montajes")
-    st.caption(f"{mes1_nombre} vs {mes2_nombre}")
-else:
-    st.title(f"📊 Dashboard de Montajes — {mes1_nombre}")
-    st.caption("Análisis detallado de operaciones")
+st.title(f"📊 Dashboard de Montajes — {mes_seleccionado}")
+st.caption("Análisis detallado de operaciones")
 
 # ============================================================
 # FUNCIÓN PARA CALCULAR KPIs
@@ -244,7 +247,7 @@ if df2 is not None and dff2 is not None and not dff2.empty:
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.metric(f"{mes1_nombre} - Operaciones", f"{kpis1['Operaciones']:,}")
+        st.metric(f"{mes_seleccionado} - Operaciones", f"{kpis1['Operaciones']:,}")
     with col2:
         st.metric(f"{mes2_nombre} - Operaciones", f"{kpis2['Operaciones']:,}" if kpis2 else "N/A")
     with col3:
@@ -253,7 +256,7 @@ if df2 is not None and dff2 is not None and not dff2.empty:
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric(f"{mes1_nombre} - Eficiencia", f"{kpis1['Eficiencia (%)']:.1f}%")
+        st.metric(f"{mes_seleccionado} - Eficiencia", f"{kpis1['Eficiencia (%)']:.1f}%")
     with col2:
         st.metric(f"{mes2_nombre} - Eficiencia", f"{kpis2['Eficiencia (%)']:.1f}%" if kpis2 else "N/A")
     with col3:
@@ -263,7 +266,7 @@ if df2 is not None and dff2 is not None and not dff2.empty:
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric(f"{mes1_nombre} - Horas netas", f"{kpis1['Horas netas']:.1f} h")
+        st.metric(f"{mes_seleccionado} - Horas netas", f"{kpis1['Horas netas']:.1f} h")
     with col2:
         st.metric(f"{mes2_nombre} - Horas netas", f"{kpis2['Horas netas']:.1f} h" if kpis2 else "N/A")
     with col3:
@@ -274,7 +277,7 @@ if df2 is not None and dff2 is not None and not dff2.empty:
 
 else:
     # MES 1 SOLO
-    st.markdown(f"### 📊 KPIs — {mes1_nombre}")
+    st.markdown(f"### 📊 KPIs — {mes_seleccionado}")
 
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Operaciones", f"{kpis1['Operaciones']:,}")
@@ -314,17 +317,17 @@ if df2 is not None and dff2 is not None and not dff2.empty:
 
     # Gráfico comparativo
     agg_merge = agg1[["MONTADOR", "Eficiencia (%)"]].copy()
-    agg_merge.columns = ["MONTADOR", mes1_nombre]
+    agg_merge.columns = ["MONTADOR", mes_seleccionado]
     agg2_temp = agg2[["MONTADOR", "Eficiencia (%)"]].copy()
     agg2_temp.columns = ["MONTADOR", mes2_nombre]
 
     agg_compare = agg_merge.merge(agg2_temp, on="MONTADOR", how="outer").fillna(0)
-    agg_compare = agg_compare.sort_values(mes1_nombre, ascending=False)
+    agg_compare = agg_compare.sort_values(mes_seleccionado, ascending=False)
 
     fig = px.bar(
         agg_compare.melt(id_vars="MONTADOR", var_name="Mes", value_name="Eficiencia (%)"),
         x="MONTADOR", y="Eficiencia (%)", color="Mes", barmode="group",
-        title=f"Eficiencia comparativa por montador — {mes1_nombre} vs {mes2_nombre}",
+        title=f"Eficiencia comparativa por montador — {mes_seleccionado} vs {mes2_nombre}",
         color_discrete_sequence=[COLOR_AZUL_PRINCIPAL, COLOR_VERDE_SECUNDARIO]
     )
     fig.add_hline(y=100, line_dash="dash", line_color="gray")
@@ -333,7 +336,7 @@ if df2 is not None and dff2 is not None and not dff2.empty:
 
     col1, col2 = st.columns(2)
     with col1:
-        st.write(f"**{mes1_nombre}**")
+        st.write(f"**{mes_seleccionado}**")
         st.dataframe(agg1[["MONTADOR", "Operaciones", "Eficiencia (%)"]].round(1),
                     hide_index=True, use_container_width=True)
     with col2:
@@ -388,7 +391,7 @@ if df2 is not None and dff2 is not None and not dff2.empty:
     col_c, col_d = st.columns(2)
     with col_c:
         fig = px.bar(agg_cli1, x="CLIENTE", y="Operaciones",
-                    title=f"Operaciones por cliente — {mes1_nombre}",
+                    title=f"Operaciones por cliente — {mes_seleccionado}",
                     color_discrete_sequence=[COLOR_AZUL_PRINCIPAL])
         st.plotly_chart(fig, use_container_width=True)
     with col_d:
@@ -399,7 +402,7 @@ if df2 is not None and dff2 is not None and not dff2.empty:
 
     col_c, col_d = st.columns(2)
     with col_c:
-        st.write(f"**{mes1_nombre}**")
+        st.write(f"**{mes_seleccionado}**")
         st.dataframe(agg_cli1.round(1), hide_index=True, use_container_width=True)
     with col_d:
         st.write(f"**{mes2_nombre}**")
@@ -456,7 +459,7 @@ if df2 is not None and dff2 is not None and not dff2.empty:
             top_prod1.melt(id_vars="PRODUCTO", value_vars=["Montajes", "Desmontajes"],
                           var_name="Tipo", value_name="Cantidad"),
             x="PRODUCTO", y="Cantidad", color="Tipo", barmode="group",
-            title=f"Top {top_n} productos — {mes1_nombre}",
+            title=f"Top {top_n} productos — {mes_seleccionado}",
             color_discrete_map={"Montajes": COLOR_AZUL_PRINCIPAL, "Desmontajes": COLOR_VERDE_SECUNDARIO}
         )
         fig.update_xaxes(tickangle=-45)
@@ -601,10 +604,10 @@ st.divider()
 # ============================================================
 st.subheader("📋 Detalle y descarga")
 
-tab1, tab2 = st.tabs([f"{mes1_nombre}", f"{mes2_nombre}"] if df2 is not None else [f"{mes1_nombre}", "Comparación"])
+tab1, tab2 = st.tabs([f"{mes_seleccionado}", f"{mes2_nombre}"] if df2 is not None else [f"{mes_seleccionado}", "Comparación"])
 
 with tab1:
-    st.write(f"**{mes1_nombre}** - Operaciones filtradas")
+    st.write(f"**{mes_seleccionado}** - Operaciones filtradas")
     st.dataframe(
         dff1[["FECHA", "MONTADOR", "NOMBRE DEL MONTADOR  / LÍDER", "PRODUCTO",
               "CLIENTE", "TIPO", "TIEMPO NETO", "TIEMPO PROGRAMADO",
@@ -612,7 +615,7 @@ with tab1:
         hide_index=True, use_container_width=True,
     )
     st.download_button("⬇️ Descargar CSV", dff1.to_csv(index=False).encode("utf-8"),
-                      f"operaciones_{mes1_nombre}.csv", "text/csv")
+                      f"operaciones_{mes_seleccionado}.csv", "text/csv")
 
 with tab2:
     if df2 is not None and dff2 is not None and not dff2.empty:
