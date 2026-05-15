@@ -24,43 +24,55 @@ if "df_main_cached" not in st.session_state:
 # CARGA DE DATOS
 # ============================================================
 @st.cache_data
-def cargar_datos(archivo, mes_nombre=""):
-    if archivo is None:
+def cargar_hoja(archivo, nombre_hoja):
+    """Carga una hoja específica del Excel y la procesa"""
+    try:
+        df = pd.read_excel(archivo, sheet_name=nombre_hoja, header=5, usecols="A:Q")
+        df.columns = [c.strip() for c in df.columns]
+
+        # Normalizar texto
+        for col in ["MONTADOR", "NOMBRE DEL MONTADOR  / LÍDER", "CLIENTE", "PRODUCTO"]:
+            if col in df.columns:
+                df[col] = df[col].astype(str).str.strip()
+
+        # Forzar numéricos
+        for col in ["TIEMPO BRUTO (MIN)", "TIEMPOS PAROS/MUERTOS",
+                    "TIEMPO NETO", "TIEMPO PROGRAMADO", "DÍA"]:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        # Marcar montaje / desmontaje
+        df["ES_MONTAJE"] = df["MONTAJE (X)"].astype(str).str.strip().str.upper() == "X"
+        df["ES_DESMONTAJE"] = df["DESMONTAJE (X)"].astype(str).str.strip().str.upper() == "X"
+        df["TIPO"] = df.apply(
+            lambda r: "Montaje" if r["ES_MONTAJE"] else ("Desmontaje" if r["ES_DESMONTAJE"] else "N/D"),
+            axis=1,
+        )
+
+        # Filtrar filas válidas
+        df = df[df["MONTADOR"].notna() & (df["MONTADOR"] != "nan") & (df["MONTADOR"] != "")]
+        df = df[df["TIEMPO NETO"].notna() & (df["TIEMPO NETO"] > 0)]
+
+        # Convertir fecha
+        df["FECHA"] = pd.to_datetime(df["DÍA"], origin="1899-12-30", unit="D", errors="coerce")
+
+        # Agregar nombre del mes (nombre de la hoja)
+        df["MES"] = nombre_hoja
+
+        return df.reset_index(drop=True)
+    except Exception as e:
         return None
 
-    # Tabla5 vive en DATA!A6:Q236 → header en fila 6 (índice 5)
-    df = pd.read_excel(archivo, sheet_name="DATA", header=5, usecols="A:Q")
-    df.columns = [c.strip() for c in df.columns]
+def cargar_multiples_hojas(archivo, hojas):
+    """Carga múltiples hojas y las combina"""
+    dfs = []
+    for hoja in hojas:
+        df = cargar_hoja(archivo, hoja)
+        if df is not None and not df.empty:
+            dfs.append(df)
 
-    # Normalizar texto (hay espacios sobrantes en MONTADOR, CLIENTE, etc.)
-    for col in ["MONTADOR", "NOMBRE DEL MONTADOR  / LÍDER", "CLIENTE", "PRODUCTO"]:
-        if col in df.columns:
-            df[col] = df[col].astype(str).str.strip()
-
-    # Forzar numéricos (los #N/D se vuelven NaN)
-    for col in ["TIEMPO BRUTO (MIN)", "TIEMPOS PAROS/MUERTOS",
-                "TIEMPO NETO", "TIEMPO PROGRAMADO", "DÍA"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    # Marcar montaje / desmontaje (vienen como "X" o vacío)
-    df["ES_MONTAJE"]    = df["MONTAJE (X)"].astype(str).str.strip().str.upper() == "X"
-    df["ES_DESMONTAJE"] = df["DESMONTAJE (X)"].astype(str).str.strip().str.upper() == "X"
-    df["TIPO"] = df.apply(
-        lambda r: "Montaje" if r["ES_MONTAJE"] else ("Desmontaje" if r["ES_DESMONTAJE"] else "N/D"),
-        axis=1,
-    )
-
-    # Filtrar filas válidas: requieren montador y tiempo neto numérico > 0
-    df = df[df["MONTADOR"].notna() & (df["MONTADOR"] != "nan") & (df["MONTADOR"] != "")]
-    df = df[df["TIEMPO NETO"].notna() & (df["TIEMPO NETO"] > 0)]
-
-    # Convertir serial de fecha Excel → fecha real (origen 1899-12-30)
-    df["FECHA"] = pd.to_datetime(df["DÍA"], origin="1899-12-30", unit="D", errors="coerce")
-
-    if mes_nombre:
-        df["MES_LABEL"] = mes_nombre
-
-    return df.reset_index(drop=True)
+    if dfs:
+        return pd.concat(dfs, ignore_index=True)
+    return None
 
 # ============================================================
 # SIDEBAR — LOGO Y CARGA DE ARCHIVOS
@@ -86,50 +98,76 @@ with col_btn2:
 st.sidebar.divider()
 st.sidebar.markdown("### 📁 Carga de archivo")
 
-archivo = st.sidebar.file_uploader("Carga archivo Excel con múltiples meses", type=["xlsx"], key="file_main")
+archivo = st.sidebar.file_uploader("Carga archivo Excel (hojas = meses)", type=["xlsx"], key="file_main")
 
-# Cargar datos con persistencia en session_state
+hojas_disponibles = []
+df_main = None
+
 if archivo is not None:
-    df_main = cargar_datos(archivo, "")
-    st.session_state.df_main_cached = df_main
-elif st.session_state.df_main_cached is not None:
-    df_main = st.session_state.df_main_cached
+    # Detectar hojas del Excel
+    try:
+        hojas_disponibles = pd.read_excel(archivo, sheet_name=None).keys()
+        hojas_disponibles = sorted([h for h in hojas_disponibles if h != "DATA"])
+        st.session_state.archivo_cargado = archivo
+        st.session_state.hojas_disponibles = hojas_disponibles
+    except Exception as e:
+        st.error(f"Error al leer archivo: {e}")
+        st.stop()
+
+elif st.session_state.get("archivo_cargado") is not None:
+    archivo = st.session_state.archivo_cargado
+    hojas_disponibles = st.session_state.get("hojas_disponibles", [])
 else:
     ruta_local = Path("MARZO.xlsx")
     if ruta_local.exists():
-        df_main = cargar_datos(ruta_local, "")
-        st.session_state.df_main_cached = df_main
+        try:
+            hojas_disponibles = pd.read_excel(ruta_local, sheet_name=None).keys()
+            hojas_disponibles = sorted([h for h in hojas_disponibles if h != "DATA"])
+            archivo = ruta_local
+            st.session_state.archivo_cargado = archivo
+            st.session_state.hojas_disponibles = hojas_disponibles
+        except:
+            st.info("⬆️ Sube un archivo Excel para comenzar.")
+            st.stop()
     else:
         st.info("⬆️ Sube un archivo Excel para comenzar.")
         st.stop()
 
-# Extraer meses únicos
-meses_disponibles = sorted(df_main["MES"].dropna().unique())
-if not meses_disponibles:
-    st.warning("⚠️ El archivo no contiene datos con la columna 'MES' correctamente.")
+if not hojas_disponibles:
+    st.error("⚠️ No se encontraron hojas en el archivo.")
     st.stop()
 
-st.sidebar.markdown("### 📅 Selecciona mes")
-
-mes_seleccionado = st.sidebar.selectbox(
-    "Mes a analizar",
-    meses_disponibles,
-    index=0,
-    key="mes_select"
+# Multi-select de meses
+st.sidebar.markdown("### 📅 Selecciona mes(es)")
+meses_seleccionados = st.sidebar.multiselect(
+    "Meses a analizar",
+    hojas_disponibles,
+    default=[hojas_disponibles[0]],
+    key="meses_select"
 )
 
-# Filtrar datos por mes seleccionado
-df1 = df_main[df_main["MES"] == mes_seleccionado].copy()
-df2 = None
-
-if df1 is None or df1.empty:
-    st.warning(f"⚠️ No hay datos para {mes_seleccionado}.")
+if not meses_seleccionados:
+    st.warning("Selecciona al menos un mes para continuar.")
     st.stop()
 
-# Obtener lista de montadores de ambos meses (si aplica)
+# Cargar datos de hojas seleccionadas
+df_main = cargar_multiples_hojas(archivo, meses_seleccionados)
+
+if df_main is None or df_main.empty:
+    st.error("Error al cargar los datos de las hojas seleccionadas.")
+    st.stop()
+
+# Para la lógica posterior, usar df_main directamente
+df1 = df_main.copy()
+df2 = None
+mes_seleccionado = " / ".join(meses_seleccionados) if len(meses_seleccionados) > 1 else meses_seleccionados[0]
+
+if df1 is None or df1.empty:
+    st.warning(f"⚠️ No hay datos para los meses seleccionados.")
+    st.stop()
+
+# Obtener lista de montadores
 todos_montadores = sorted(df1["MONTADOR"].unique())
-if df2 is not None and not df2.empty:
-    todos_montadores = sorted(set(todos_montadores) | set(df2["MONTADOR"].unique()))
 
 # ============================================================
 # FILTROS EN SIDEBAR
@@ -145,8 +183,6 @@ montadores_seleccionados = st.sidebar.multiselect(
 )
 
 clientes = sorted(df1["CLIENTE"].dropna().unique())
-if df2 is not None:
-    clientes = sorted(set(clientes) | set(df2["CLIENTE"].dropna().unique()))
 
 clientes_seleccionados = st.sidebar.multiselect(
     "Clientes",
@@ -165,8 +201,6 @@ tipos_seleccionados = st.sidebar.multiselect(
 # Filtro de productos
 st.sidebar.markdown("**Filtro por producto (opcional):**")
 productos_filtro = sorted(df1["PRODUCTO"].dropna().unique())
-if df2 is not None:
-    productos_filtro = sorted(set(productos_filtro) | set(df2["PRODUCTO"].dropna().unique()))
 
 productos_seleccionados = st.sidebar.multiselect(
     "Número de producto",
@@ -185,7 +219,6 @@ def aplicar_filtros(df):
     ].copy()
 
 dff1 = aplicar_filtros(df1)
-dff2 = aplicar_filtros(df2) if df2 is not None else None
 
 if dff1.empty:
     st.warning(f"No hay datos para {mes_seleccionado} con los filtros seleccionados.")
