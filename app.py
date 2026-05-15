@@ -258,58 +258,21 @@ def calcular_kpis(df):
     }
 
 kpis1 = calcular_kpis(dff1)
-kpis2 = calcular_kpis(dff2) if dff2 is not None else None
 
 # ============================================================
-# KPIs COMPARATIVOS
+# KPIs
 # ============================================================
-if df2 is not None and dff2 is not None and not dff2.empty:
-    st.markdown("### 📊 KPIs Comparativos")
+st.markdown(f"### 📊 KPIs — {mes_seleccionado}")
 
-    col1, col2, col3 = st.columns(3)
+c1, c2, c3, c4, c5 = st.columns(5)
+c1.metric("Operaciones", f"{kpis1['Operaciones']:,}")
+c2.metric("Montajes / Desmontajes", f"{kpis1['Montajes']} / {kpis1['Desmontajes']}")
+c3.metric("Horas netas", f"{kpis1['Horas netas']:.1f} h")
+c4.metric("Eficiencia", f"{kpis1['Eficiencia (%)']:.1f}%")
+c5.metric("Cumplimiento", f"{kpis1['Cumplimiento (%)']:.1f}%",
+         delta=f"% paros: {kpis1['% Paros']:.1f}%", delta_color="off")
 
-    with col1:
-        st.metric(f"{mes_seleccionado} - Operaciones", f"{kpis1['Operaciones']:,}")
-    with col2:
-        st.metric(f"{mes2_nombre} - Operaciones", f"{kpis2['Operaciones']:,}" if kpis2 else "N/A")
-    with col3:
-        delta_ops = kpis2['Operaciones'] - kpis1['Operaciones'] if kpis2 else 0
-        st.metric("Diferencia", f"{delta_ops:+,}")
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric(f"{mes_seleccionado} - Eficiencia", f"{kpis1['Eficiencia (%)']:.1f}%")
-    with col2:
-        st.metric(f"{mes2_nombre} - Eficiencia", f"{kpis2['Eficiencia (%)']:.1f}%" if kpis2 else "N/A")
-    with col3:
-        delta_ef = kpis2['Eficiencia (%)'] - kpis1['Eficiencia (%)'] if kpis2 else 0
-        st.metric("Diferencia", f"{delta_ef:+.1f}%",
-                 delta_color="normal" if delta_ef >= 0 else "inverse")
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric(f"{mes_seleccionado} - Horas netas", f"{kpis1['Horas netas']:.1f} h")
-    with col2:
-        st.metric(f"{mes2_nombre} - Horas netas", f"{kpis2['Horas netas']:.1f} h" if kpis2 else "N/A")
-    with col3:
-        delta_hrs = kpis2['Horas netas'] - kpis1['Horas netas'] if kpis2 else 0
-        st.metric("Diferencia", f"{delta_hrs:+.1f} h")
-
-    st.divider()
-
-else:
-    # MES 1 SOLO
-    st.markdown(f"### 📊 KPIs — {mes_seleccionado}")
-
-    c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("Operaciones", f"{kpis1['Operaciones']:,}")
-    c2.metric("Montajes / Desmontajes", f"{kpis1['Montajes']} / {kpis1['Desmontajes']}")
-    c3.metric("Horas netas", f"{kpis1['Horas netas']:.1f} h")
-    c4.metric("Eficiencia", f"{kpis1['Eficiencia (%)']:.1f}%")
-    c5.metric("Cumplimiento", f"{kpis1['Cumplimiento (%)']:.1f}%",
-             delta=f"% paros: {kpis1['% Paros']:.1f}%", delta_color="off")
-
-    st.divider()
+st.divider()
 
 # ============================================================
 # COMPARACIÓN: EFICIENCIA POR MONTADOR
@@ -333,9 +296,6 @@ def get_montador_stats(df):
     return agg.sort_values("Eficiencia (%)", ascending=False)
 
 agg1 = get_montador_stats(dff1)
-
-if df2 is not None and dff2 is not None and not dff2.empty:
-    agg2 = get_montador_stats(dff2)
 
     # Gráfico comparativo
     agg_merge = agg1[["MONTADOR", "Eficiencia (%)"]].copy()
@@ -407,9 +367,6 @@ def get_cliente_stats(df):
 
 agg_cli1 = get_cliente_stats(dff1)
 
-if df2 is not None and dff2 is not None and not dff2.empty:
-    agg_cli2 = get_cliente_stats(dff2)
-
     col_c, col_d = st.columns(2)
     with col_c:
         fig = px.bar(agg_cli1, x="CLIENTE", y="Operaciones",
@@ -467,9 +424,6 @@ def get_producto_stats(df):
     return agg.sort_values("Total", ascending=False)
 
 agg_prod1 = get_producto_stats(dff1)
-
-if df2 is not None and dff2 is not None and not dff2.empty:
-    agg_prod2 = get_producto_stats(dff2)
 
     top_n = st.slider("Top N productos", 5, 30, 15)
     top_prod1 = agg_prod1.head(top_n)
@@ -640,15 +594,3 @@ with tab1:
                       f"operaciones_{mes_seleccionado}.csv", "text/csv")
 
 with tab2:
-    if df2 is not None and dff2 is not None and not dff2.empty:
-        st.write(f"**{mes2_nombre}** - Operaciones filtradas")
-        st.dataframe(
-            dff2[["FECHA", "MONTADOR", "NOMBRE DEL MONTADOR  / LÍDER", "PRODUCTO",
-                  "CLIENTE", "TIPO", "TIEMPO NETO", "TIEMPO PROGRAMADO",
-                  "TIEMPOS PAROS/MUERTOS"]],
-            hide_index=True, use_container_width=True,
-        )
-        st.download_button("⬇️ Descargar CSV", dff2.to_csv(index=False).encode("utf-8"),
-                          f"operaciones_{mes2_nombre}.csv", "text/csv")
-    else:
-        st.info("Carga un segundo archivo para ver la comparación detallada.")
