@@ -17,14 +17,8 @@ LOGO_PATH = Path("electroplast_logo.png")
 # ============================================================
 # INICIALIZAR SESSION STATE
 # ============================================================
-if "df1_cached" not in st.session_state:
-    st.session_state.df1_cached = None
-if "df2_cached" not in st.session_state:
-    st.session_state.df2_cached = None
-if "mes_seleccionado" not in st.session_state:
-    st.session_state.mes_seleccionado = "Marzo"
-if "mes2_nombre" not in st.session_state:
-    st.session_state.mes2_nombre = "Abril"
+if "df_main_cached" not in st.session_state:
+    st.session_state.df_main_cached = None
 
 # ============================================================
 # CARGA DE DATOS
@@ -98,13 +92,8 @@ archivo = st.sidebar.file_uploader("Carga archivo Excel con múltiples meses", t
 if archivo is not None:
     df_main = cargar_datos(archivo, "")
     st.session_state.df_main_cached = df_main
-elif st.session_state.df1_cached is not None and st.session_state.df2_cached is not None:
-    # Compatibilidad hacia atrás: si había dos archivos cargados, combinarlos
-    df_main = pd.concat([st.session_state.df1_cached, st.session_state.df2_cached], ignore_index=True)
-    st.session_state.df_main_cached = df_main
-elif st.session_state.df1_cached is not None:
-    df_main = st.session_state.df1_cached
-    st.session_state.df_main_cached = df_main
+elif st.session_state.df_main_cached is not None:
+    df_main = st.session_state.df_main_cached
 else:
     ruta_local = Path("MARZO.xlsx")
     if ruta_local.exists():
