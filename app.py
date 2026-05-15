@@ -7,6 +7,14 @@ from pathlib import Path
 st.set_page_config(page_title="Dashboard Montajes - Comparativo", layout="wide", page_icon="📊")
 
 # ============================================================
+# CONSTANTES DE BRANDING ELECTROPLAST
+# ============================================================
+COLOR_AZUL_PRINCIPAL = "#003DA5"
+COLOR_VERDE_SECUNDARIO = "#00A651"
+COLOR_GRIS_CLARO = "#f5f5f5"
+LOGO_PATH = Path("electroplast_logo.png")
+
+# ============================================================
 # CARGA DE DATOS
 # ============================================================
 @st.cache_data
@@ -49,8 +57,12 @@ def cargar_datos(archivo, mes_nombre=""):
     return df.reset_index(drop=True)
 
 # ============================================================
-# SIDEBAR — CARGA DE ARCHIVOS Y FILTROS
+# SIDEBAR — LOGO Y CARGA DE ARCHIVOS
 # ============================================================
+if LOGO_PATH.exists():
+    st.sidebar.image(str(LOGO_PATH), width=250)
+    st.sidebar.divider()
+
 st.sidebar.title("⚙️ Configuración")
 st.sidebar.markdown("### 📁 Carga de archivos")
 
@@ -256,9 +268,10 @@ if df2 is not None and dff2 is not None and not dff2.empty:
         agg_compare.melt(id_vars="MONTADOR", var_name="Mes", value_name="Eficiencia (%)"),
         x="MONTADOR", y="Eficiencia (%)", color="Mes", barmode="group",
         title=f"Eficiencia comparativa por montador — {mes1_nombre} vs {mes2_nombre}",
-        color_discrete_sequence=["#1f77b4", "#ff7f0e"]
+        color_discrete_sequence=[COLOR_AZUL_PRINCIPAL, COLOR_VERDE_SECUNDARIO]
     )
     fig.add_hline(y=100, line_dash="dash", line_color="gray")
+    fig.update_layout(hovermode="x unified")
     st.plotly_chart(fig, use_container_width=True)
 
     col1, col2 = st.columns(2)
@@ -276,7 +289,8 @@ else:
     with col_a:
         fig = px.bar(
             agg1, x="MONTADOR", y="Eficiencia (%)",
-            color="Eficiencia (%)", color_continuous_scale="RdYlGn",
+            color="Eficiencia (%)",
+            color_continuous_scale=[[0, COLOR_VERDE_SECUNDARIO], [0.5, COLOR_AZUL_PRINCIPAL], [1, COLOR_AZUL_PRINCIPAL]],
             title="Eficiencia por montador"
         )
         fig.add_hline(y=100, line_dash="dash", line_color="gray")
@@ -317,11 +331,13 @@ if df2 is not None and dff2 is not None and not dff2.empty:
     col_c, col_d = st.columns(2)
     with col_c:
         fig = px.bar(agg_cli1, x="CLIENTE", y="Operaciones",
-                    title=f"Operaciones por cliente — {mes1_nombre}")
+                    title=f"Operaciones por cliente — {mes1_nombre}",
+                    color_discrete_sequence=[COLOR_AZUL_PRINCIPAL])
         st.plotly_chart(fig, use_container_width=True)
     with col_d:
         fig = px.bar(agg_cli2, x="CLIENTE", y="Operaciones",
-                    title=f"Operaciones por cliente — {mes2_nombre}")
+                    title=f"Operaciones por cliente — {mes2_nombre}",
+                    color_discrete_sequence=[COLOR_VERDE_SECUNDARIO])
         st.plotly_chart(fig, use_container_width=True)
 
     col_c, col_d = st.columns(2)
@@ -336,11 +352,15 @@ else:
     col_c, col_d = st.columns(2)
     with col_c:
         fig = px.bar(agg_cli1, x="CLIENTE", y="Operaciones",
-                    title="Volumen de operaciones por cliente")
+                    title="Volumen de operaciones por cliente",
+                    color_discrete_sequence=[COLOR_AZUL_PRINCIPAL])
         st.plotly_chart(fig, use_container_width=True)
     with col_d:
+        colors = [COLOR_AZUL_PRINCIPAL if i % 2 == 0 else COLOR_VERDE_SECUNDARIO
+                 for i in range(len(agg_cli1))]
         fig = px.pie(agg_cli1, names="CLIENTE", values="Horas netas",
-                    title="Distribución de horas netas", hole=0.4)
+                    title="Distribución de horas netas", hole=0.4,
+                    color_discrete_sequence=colors)
         st.plotly_chart(fig, use_container_width=True)
 
     st.dataframe(agg_cli1.round(1), hide_index=True, use_container_width=True)
@@ -379,7 +399,8 @@ if df2 is not None and dff2 is not None and not dff2.empty:
             top_prod1.melt(id_vars="PRODUCTO", value_vars=["Montajes", "Desmontajes"],
                           var_name="Tipo", value_name="Cantidad"),
             x="PRODUCTO", y="Cantidad", color="Tipo", barmode="group",
-            title=f"Top {top_n} productos — {mes1_nombre}"
+            title=f"Top {top_n} productos — {mes1_nombre}",
+            color_discrete_map={"Montajes": COLOR_AZUL_PRINCIPAL, "Desmontajes": COLOR_VERDE_SECUNDARIO}
         )
         fig.update_xaxes(tickangle=-45)
         st.plotly_chart(fig, use_container_width=True)
@@ -389,7 +410,8 @@ if df2 is not None and dff2 is not None and not dff2.empty:
             top_prod2.melt(id_vars="PRODUCTO", value_vars=["Montajes", "Desmontajes"],
                           var_name="Tipo", value_name="Cantidad"),
             x="PRODUCTO", y="Cantidad", color="Tipo", barmode="group",
-            title=f"Top {top_n} productos — {mes2_nombre}"
+            title=f"Top {top_n} productos — {mes2_nombre}",
+            color_discrete_map={"Montajes": COLOR_AZUL_PRINCIPAL, "Desmontajes": COLOR_VERDE_SECUNDARIO}
         )
         fig.update_xaxes(tickangle=-45)
         st.plotly_chart(fig, use_container_width=True)
@@ -402,7 +424,8 @@ else:
         top_prod1.melt(id_vars="PRODUCTO", value_vars=["Montajes", "Desmontajes"],
                       var_name="Tipo", value_name="Cantidad"),
         x="PRODUCTO", y="Cantidad", color="Tipo", barmode="group",
-        title=f"Top {top_n} productos"
+        title=f"Top {top_n} productos",
+        color_discrete_map={"Montajes": COLOR_AZUL_PRINCIPAL, "Desmontajes": COLOR_VERDE_SECUNDARIO}
     )
     fig.update_xaxes(tickangle=-45)
     st.plotly_chart(fig, use_container_width=True)
