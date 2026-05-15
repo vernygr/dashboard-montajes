@@ -337,42 +337,21 @@ def get_cliente_stats(df):
 
 agg_cli1 = get_cliente_stats(dff1)
 
-    col_c, col_d = st.columns(2)
-    with col_c:
-        fig = px.bar(agg_cli1, x="CLIENTE", y="Operaciones",
-                    title=f"Operaciones por cliente — {mes_seleccionado}",
-                    color_discrete_sequence=[COLOR_AZUL_PRINCIPAL])
-        st.plotly_chart(fig, use_container_width=True)
-    with col_d:
-        fig = px.bar(agg_cli2, x="CLIENTE", y="Operaciones",
-                    title=f"Operaciones por cliente — {mes2_nombre}",
-                    color_discrete_sequence=[COLOR_VERDE_SECUNDARIO])
-        st.plotly_chart(fig, use_container_width=True)
+col_c, col_d = st.columns(2)
+with col_c:
+    fig = px.bar(agg_cli1, x="CLIENTE", y="Operaciones",
+                title="Volumen de operaciones por cliente",
+                color_discrete_sequence=[COLOR_AZUL_PRINCIPAL])
+    st.plotly_chart(fig, use_container_width=True)
+with col_d:
+    colors = [COLOR_AZUL_PRINCIPAL if i % 2 == 0 else COLOR_VERDE_SECUNDARIO
+             for i in range(len(agg_cli1))]
+    fig = px.pie(agg_cli1, names="CLIENTE", values="Horas netas",
+                title="Distribución de horas netas", hole=0.4,
+                color_discrete_sequence=colors)
+    st.plotly_chart(fig, use_container_width=True)
 
-    col_c, col_d = st.columns(2)
-    with col_c:
-        st.write(f"**{mes_seleccionado}**")
-        st.dataframe(agg_cli1.round(1), hide_index=True, use_container_width=True)
-    with col_d:
-        st.write(f"**{mes2_nombre}**")
-        st.dataframe(agg_cli2.round(1), hide_index=True, use_container_width=True)
-
-else:
-    col_c, col_d = st.columns(2)
-    with col_c:
-        fig = px.bar(agg_cli1, x="CLIENTE", y="Operaciones",
-                    title="Volumen de operaciones por cliente",
-                    color_discrete_sequence=[COLOR_AZUL_PRINCIPAL])
-        st.plotly_chart(fig, use_container_width=True)
-    with col_d:
-        colors = [COLOR_AZUL_PRINCIPAL if i % 2 == 0 else COLOR_VERDE_SECUNDARIO
-                 for i in range(len(agg_cli1))]
-        fig = px.pie(agg_cli1, names="CLIENTE", values="Horas netas",
-                    title="Distribución de horas netas", hole=0.4,
-                    color_discrete_sequence=colors)
-        st.plotly_chart(fig, use_container_width=True)
-
-    st.dataframe(agg_cli1.round(1), hide_index=True, use_container_width=True)
+st.dataframe(agg_cli1.round(1), hide_index=True, use_container_width=True)
 
 st.divider()
 
@@ -395,46 +374,18 @@ def get_producto_stats(df):
 
 agg_prod1 = get_producto_stats(dff1)
 
-    top_n = st.slider("Top N productos", 5, 30, 15)
-    top_prod1 = agg_prod1.head(top_n)
-    top_prod2 = agg_prod2.head(top_n)
+top_n = st.slider("Top N productos", 5, 30, 15)
+top_prod1 = agg_prod1.head(top_n)
 
-    col_e, col_f = st.columns(2)
-    with col_e:
-        fig = px.bar(
-            top_prod1.melt(id_vars="PRODUCTO", value_vars=["Montajes", "Desmontajes"],
-                          var_name="Tipo", value_name="Cantidad"),
-            x="PRODUCTO", y="Cantidad", color="Tipo", barmode="group",
-            title=f"Top {top_n} productos — {mes_seleccionado}",
-            color_discrete_map={"Montajes": COLOR_AZUL_PRINCIPAL, "Desmontajes": COLOR_VERDE_SECUNDARIO}
-        )
-        fig.update_xaxes(tickangle=-45)
-        st.plotly_chart(fig, use_container_width=True)
-
-    with col_f:
-        fig = px.bar(
-            top_prod2.melt(id_vars="PRODUCTO", value_vars=["Montajes", "Desmontajes"],
-                          var_name="Tipo", value_name="Cantidad"),
-            x="PRODUCTO", y="Cantidad", color="Tipo", barmode="group",
-            title=f"Top {top_n} productos — {mes2_nombre}",
-            color_discrete_map={"Montajes": COLOR_AZUL_PRINCIPAL, "Desmontajes": COLOR_VERDE_SECUNDARIO}
-        )
-        fig.update_xaxes(tickangle=-45)
-        st.plotly_chart(fig, use_container_width=True)
-
-else:
-    top_n = st.slider("Top N productos", 5, 30, 15)
-    top_prod1 = agg_prod1.head(top_n)
-
-    fig = px.bar(
-        top_prod1.melt(id_vars="PRODUCTO", value_vars=["Montajes", "Desmontajes"],
-                      var_name="Tipo", value_name="Cantidad"),
-        x="PRODUCTO", y="Cantidad", color="Tipo", barmode="group",
-        title=f"Top {top_n} productos",
-        color_discrete_map={"Montajes": COLOR_AZUL_PRINCIPAL, "Desmontajes": COLOR_VERDE_SECUNDARIO}
-    )
-    fig.update_xaxes(tickangle=-45)
-    st.plotly_chart(fig, use_container_width=True)
+fig = px.bar(
+    top_prod1.melt(id_vars="PRODUCTO", value_vars=["Montajes", "Desmontajes"],
+                  var_name="Tipo", value_name="Cantidad"),
+    x="PRODUCTO", y="Cantidad", color="Tipo", barmode="group",
+    title=f"Top {top_n} productos",
+    color_discrete_map={"Montajes": COLOR_AZUL_PRINCIPAL, "Desmontajes": COLOR_VERDE_SECUNDARIO}
+)
+fig.update_xaxes(tickangle=-45)
+st.plotly_chart(fig, use_container_width=True)
 
 st.divider()
 
@@ -550,17 +501,13 @@ st.divider()
 # ============================================================
 st.subheader("📋 Detalle y descarga")
 
-tab1, tab2 = st.tabs([f"{mes_seleccionado}", f"{mes2_nombre}"] if df2 is not None else [f"{mes_seleccionado}", "Comparación"])
+st.write(f"**Operaciones filtradas** - Meses seleccionados: {', '.join(meses_seleccionados)}")
+st.dataframe(
+    dff1[["FECHA", "MONTADOR", "NOMBRE DEL MONTADOR  / LÍDER", "PRODUCTO",
+          "CLIENTE", "TIPO", "TIEMPO NETO", "TIEMPO PROGRAMADO",
+          "TIEMPOS PAROS/MUERTOS"]],
+    hide_index=True, use_container_width=True,
+)
 
-with tab1:
-    st.write(f"**{mes_seleccionado}** - Operaciones filtradas")
-    st.dataframe(
-        dff1[["FECHA", "MONTADOR", "NOMBRE DEL MONTADOR  / LÍDER", "PRODUCTO",
-              "CLIENTE", "TIPO", "TIEMPO NETO", "TIEMPO PROGRAMADO",
-              "TIEMPOS PAROS/MUERTOS"]],
-        hide_index=True, use_container_width=True,
-    )
-    st.download_button("⬇️ Descargar CSV", dff1.to_csv(index=False).encode("utf-8"),
-                      f"operaciones_{mes_seleccionado}.csv", "text/csv")
-
-with tab2:
+st.download_button("⬇️ Descargar CSV", dff1.to_csv(index=False).encode("utf-8"),
+                  f"operaciones_{'-'.join(meses_seleccionados)}.csv", "text/csv")
