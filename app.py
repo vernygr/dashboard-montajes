@@ -166,17 +166,17 @@ tipos_seleccionados = st.sidebar.multiselect(
     key="tipo_filter"
 )
 
-# Filtro de moldes
-st.sidebar.markdown("**Filtro por molde (opcional):**")
-moldes = sorted(df1["INY"].dropna().unique().astype(int))
+# Filtro de productos
+st.sidebar.markdown("**Filtro por producto (opcional):**")
+productos_filtro = sorted(df1["PRODUCTO"].dropna().unique())
 if df2 is not None:
-    moldes = sorted(set(moldes) | set(df2["INY"].dropna().unique().astype(int)))
+    productos_filtro = sorted(set(productos_filtro) | set(df2["PRODUCTO"].dropna().unique()))
 
-moldes_seleccionados = st.sidebar.multiselect(
-    "Número de molde",
-    moldes,
-    default=moldes,
-    key="molde_filter"
+productos_seleccionados = st.sidebar.multiselect(
+    "Número de producto",
+    productos_filtro,
+    default=productos_filtro,
+    key="producto_filter"
 )
 
 # Aplicar filtros
@@ -185,7 +185,7 @@ def aplicar_filtros(df):
         df["MONTADOR"].isin(montadores_seleccionados)
         & df["CLIENTE"].isin(clientes_seleccionados)
         & df["TIPO"].isin(tipos_seleccionados)
-        & df["INY"].isin(moldes_seleccionados)
+        & df["PRODUCTO"].isin(productos_seleccionados)
     ].copy()
 
 dff1 = aplicar_filtros(df1)
@@ -490,106 +490,109 @@ else:
 st.divider()
 
 # ============================================================
-# ANÁLISIS DE MOLDES
+# ANÁLISIS DE PRODUCTOS
 # ============================================================
-st.subheader("🔩 Histórico de moldes")
+st.subheader("📦 Histórico de productos")
 
-def get_molde_stats(df):
-    """Análisis detallado de un molde específico"""
-    df_molde = df.dropna(subset=["TIEMPO NETO", "TIEMPO PROGRAMADO"])
+def get_producto_hist_stats(df):
+    """Análisis detallado de un producto específico"""
+    df_prod = df.dropna(subset=["TIEMPO NETO", "TIEMPO PROGRAMADO"])
 
     stats = {
-        "Total operaciones": len(df_molde),
-        "Montajes": int(df_molde["ES_MONTAJE"].sum()),
-        "Desmontajes": int(df_molde["ES_DESMONTAJE"].sum()),
-        "Promedio tiempo neto (min)": df_molde["TIEMPO NETO"].mean(),
-        "Máximo tiempo neto (min)": df_molde["TIEMPO NETO"].max(),
-        "Mínimo tiempo neto (min)": df_molde["TIEMPO NETO"].min(),
-        "Eficiencia promedio (%)": (df_molde["TIEMPO PROGRAMADO"].sum() / df_molde["TIEMPO NETO"].sum() * 100) if len(df_molde) else 0,
+        "Total operaciones": len(df_prod),
+        "Montajes": int(df_prod["ES_MONTAJE"].sum()),
+        "Desmontajes": int(df_prod["ES_DESMONTAJE"].sum()),
+        "Promedio tiempo neto (min)": df_prod["TIEMPO NETO"].mean(),
+        "Máximo tiempo neto (min)": df_prod["TIEMPO NETO"].max(),
+        "Mínimo tiempo neto (min)": df_prod["TIEMPO NETO"].min(),
+        "Eficiencia promedio (%)": (df_prod["TIEMPO PROGRAMADO"].sum() / df_prod["TIEMPO NETO"].sum() * 100) if len(df_prod) else 0,
     }
     return stats
 
-# Selector de molde para análisis detallado
-molde_analisis = st.selectbox(
-    "Selecciona un molde para análisis detallado",
-    moldes_seleccionados,
-    key="molde_analisis"
-)
+# Selector de producto para análisis detallado
+if len(productos_seleccionados) > 0:
+    producto_analisis = st.selectbox(
+        "Selecciona un producto para análisis detallado de tiempos",
+        productos_seleccionados,
+        key="producto_analisis"
+    )
 
-if molde_analisis:
-    df_molde1 = dff1[dff1["INY"] == molde_analisis].copy()
-    df_molde1 = df_molde1.sort_values("FECHA")
+    if producto_analisis:
+        df_prod1 = dff1[dff1["PRODUCTO"] == producto_analisis].copy()
+        df_prod1 = df_prod1.sort_values("FECHA")
 
-    if len(df_molde1) > 0:
-        stats_molde1 = get_molde_stats(df_molde1)
+        if len(df_prod1) > 0:
+            stats_prod1 = get_producto_hist_stats(df_prod1)
 
-        # Mostrar estadísticas
-        st.markdown(f"### Molde #{molde_analisis}")
+            # Mostrar estadísticas
+            st.markdown(f"### Producto: {producto_analisis}")
 
-        col1, col2, col3, col4, col5 = st.columns(5)
-        col1.metric("Operaciones", f"{stats_molde1['Total operaciones']:,}")
-        col2.metric("Montajes/Desmontajes", f"{stats_molde1['Montajes']}/{stats_molde1['Desmontajes']}")
-        col3.metric("Promedio tiempo (min)", f"{stats_molde1['Promedio tiempo neto (min)']:.1f}")
-        col4.metric("Eficiencia promedio", f"{stats_molde1['Eficiencia promedio (%)']:.1f}%")
-        col5.metric("Rango tiempo (min)", f"{stats_molde1['Mínimo tiempo neto (min)']:.1f} - {stats_molde1['Máximo tiempo neto (min)']:.1f}")
+            col1, col2, col3, col4, col5 = st.columns(5)
+            col1.metric("Operaciones", f"{stats_prod1['Total operaciones']:,}")
+            col2.metric("Montajes/Desmontajes", f"{stats_prod1['Montajes']}/{stats_prod1['Desmontajes']}")
+            col3.metric("Promedio tiempo (min)", f"{stats_prod1['Promedio tiempo neto (min)']:.1f}")
+            col4.metric("Eficiencia promedio", f"{stats_prod1['Eficiencia promedio (%)']:.1f}%")
+            col5.metric("Rango tiempo (min)", f"{stats_prod1['Mínimo tiempo neto (min)']:.1f} - {stats_prod1['Máximo tiempo neto (min)']:.1f}")
 
-        st.divider()
+            st.divider()
 
-        # Gráfico de tendencia de tiempos
-        fig_tendencia = px.line(
-            df_molde1,
-            x="FECHA",
-            y="TIEMPO NETO",
-            color="TIPO",
-            title=f"Histórico de tiempos netos - Molde #{molde_analisis}",
-            markers=True,
-            color_discrete_map={"Montaje": COLOR_AZUL_PRINCIPAL, "Desmontaje": COLOR_VERDE_SECUNDARIO}
-        )
-        fig_tendencia.add_hline(y=df_molde1["TIEMPO NETO"].mean(),
-                               line_dash="dash",
-                               line_color="gray",
-                               annotation_text="Promedio")
-        st.plotly_chart(fig_tendencia, use_container_width=True)
-
-        # Comparación: Tiempo neto vs Tiempo programado
-        col_g, col_h = st.columns(2)
-        with col_g:
-            fig_scatter = px.scatter(
-                df_molde1,
-                x="TIEMPO PROGRAMADO",
+            # Gráfico de tendencia de tiempos
+            fig_tendencia = px.line(
+                df_prod1,
+                x="FECHA",
                 y="TIEMPO NETO",
                 color="TIPO",
-                title=f"Programado vs Neto - Molde #{molde_analisis}",
-                hover_data=["MONTADOR", "FECHA"],
+                title=f"Histórico de tiempos netos - Producto {producto_analisis}",
+                markers=True,
                 color_discrete_map={"Montaje": COLOR_AZUL_PRINCIPAL, "Desmontaje": COLOR_VERDE_SECUNDARIO}
             )
-            fig_scatter.add_shape(
-                type="line",
-                x0=df_molde1["TIEMPO PROGRAMADO"].min(),
-                y0=df_molde1["TIEMPO PROGRAMADO"].min(),
-                x1=df_molde1["TIEMPO PROGRAMADO"].max(),
-                y1=df_molde1["TIEMPO PROGRAMADO"].max(),
-                line=dict(dash="dash", color="gray"),
-                name="Línea de eficiencia 100%"
-            )
-            st.plotly_chart(fig_scatter, use_container_width=True)
+            fig_tendencia.add_hline(y=df_prod1["TIEMPO NETO"].mean(),
+                                   line_dash="dash",
+                                   line_color="gray",
+                                   annotation_text="Promedio")
+            st.plotly_chart(fig_tendencia, use_container_width=True)
 
-        with col_h:
-            # Tabla de operaciones del molde
-            st.write(f"**Operaciones del molde #{molde_analisis}**")
-            st.dataframe(
-                df_molde1[["FECHA", "MONTADOR", "TIPO", "TIEMPO NETO", "TIEMPO PROGRAMADO", "CLIENTE"]].sort_values("FECHA"),
-                hide_index=True,
-                use_container_width=True
-            )
-            st.download_button(
-                "⬇️ Descargar histórico molde",
-                df_molde1.to_csv(index=False).encode("utf-8"),
-                f"historico_molde_{molde_analisis}.csv",
-                "text/csv"
-            )
-    else:
-        st.info(f"No hay datos para el molde #{molde_analisis} con los filtros seleccionados.")
+            # Comparación: Tiempo neto vs Tiempo programado
+            col_g, col_h = st.columns(2)
+            with col_g:
+                fig_scatter = px.scatter(
+                    df_prod1,
+                    x="TIEMPO PROGRAMADO",
+                    y="TIEMPO NETO",
+                    color="TIPO",
+                    title=f"Programado vs Neto - Producto {producto_analisis}",
+                    hover_data=["MONTADOR", "FECHA"],
+                    color_discrete_map={"Montaje": COLOR_AZUL_PRINCIPAL, "Desmontaje": COLOR_VERDE_SECUNDARIO}
+                )
+                fig_scatter.add_shape(
+                    type="line",
+                    x0=df_prod1["TIEMPO PROGRAMADO"].min(),
+                    y0=df_prod1["TIEMPO PROGRAMADO"].min(),
+                    x1=df_prod1["TIEMPO PROGRAMADO"].max(),
+                    y1=df_prod1["TIEMPO PROGRAMADO"].max(),
+                    line=dict(dash="dash", color="gray"),
+                    name="Línea de eficiencia 100%"
+                )
+                st.plotly_chart(fig_scatter, use_container_width=True)
+
+            with col_h:
+                # Tabla de operaciones del producto
+                st.write(f"**Operaciones del producto {producto_analisis}**")
+                st.dataframe(
+                    df_prod1[["FECHA", "MONTADOR", "TIPO", "TIEMPO NETO", "TIEMPO PROGRAMADO", "CLIENTE"]].sort_values("FECHA"),
+                    hide_index=True,
+                    use_container_width=True
+                )
+                st.download_button(
+                    "⬇️ Descargar histórico producto",
+                    df_prod1.to_csv(index=False).encode("utf-8"),
+                    f"historico_producto_{producto_analisis}.csv",
+                    "text/csv"
+                )
+        else:
+            st.info(f"No hay datos para el producto {producto_analisis} con los filtros seleccionados.")
+else:
+    st.info("Selecciona al menos un producto en el filtro para ver el análisis.")
 
 st.divider()
 
