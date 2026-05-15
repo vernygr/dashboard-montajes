@@ -297,49 +297,19 @@ def get_montador_stats(df):
 
 agg1 = get_montador_stats(dff1)
 
-    # Gráfico comparativo
-    agg_merge = agg1[["MONTADOR", "Eficiencia (%)"]].copy()
-    agg_merge.columns = ["MONTADOR", mes_seleccionado]
-    agg2_temp = agg2[["MONTADOR", "Eficiencia (%)"]].copy()
-    agg2_temp.columns = ["MONTADOR", mes2_nombre]
-
-    agg_compare = agg_merge.merge(agg2_temp, on="MONTADOR", how="outer").fillna(0)
-    agg_compare = agg_compare.sort_values(mes_seleccionado, ascending=False)
-
+col_a, col_b = st.columns([2, 1])
+with col_a:
     fig = px.bar(
-        agg_compare.melt(id_vars="MONTADOR", var_name="Mes", value_name="Eficiencia (%)"),
-        x="MONTADOR", y="Eficiencia (%)", color="Mes", barmode="group",
-        title=f"Eficiencia comparativa por montador — {mes_seleccionado} vs {mes2_nombre}",
-        color_discrete_sequence=[COLOR_AZUL_PRINCIPAL, COLOR_VERDE_SECUNDARIO]
+        agg1, x="MONTADOR", y="Eficiencia (%)",
+        color="Eficiencia (%)",
+        color_continuous_scale=[[0, COLOR_VERDE_SECUNDARIO], [0.5, COLOR_AZUL_PRINCIPAL], [1, COLOR_AZUL_PRINCIPAL]],
+        title="Eficiencia por montador"
     )
     fig.add_hline(y=100, line_dash="dash", line_color="gray")
-    fig.update_layout(hovermode="x unified")
     st.plotly_chart(fig, use_container_width=True)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write(f"**{mes_seleccionado}**")
-        st.dataframe(agg1[["MONTADOR", "Operaciones", "Eficiencia (%)"]].round(1),
-                    hide_index=True, use_container_width=True)
-    with col2:
-        st.write(f"**{mes2_nombre}**")
-        st.dataframe(agg2[["MONTADOR", "Operaciones", "Eficiencia (%)"]].round(1),
-                    hide_index=True, use_container_width=True)
-
-else:
-    col_a, col_b = st.columns([2, 1])
-    with col_a:
-        fig = px.bar(
-            agg1, x="MONTADOR", y="Eficiencia (%)",
-            color="Eficiencia (%)",
-            color_continuous_scale=[[0, COLOR_VERDE_SECUNDARIO], [0.5, COLOR_AZUL_PRINCIPAL], [1, COLOR_AZUL_PRINCIPAL]],
-            title="Eficiencia por montador"
-        )
-        fig.add_hline(y=100, line_dash="dash", line_color="gray")
-        st.plotly_chart(fig, use_container_width=True)
-    with col_b:
-        st.dataframe(agg1[["MONTADOR", "Operaciones", "Eficiencia (%)"]].round(1),
-                    hide_index=True, use_container_width=True)
+with col_b:
+    st.dataframe(agg1[["MONTADOR", "Operaciones", "Eficiencia (%)"]].round(1),
+                hide_index=True, use_container_width=True)
 
 st.divider()
 
